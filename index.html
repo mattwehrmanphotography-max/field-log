@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Field Log">
+<meta name="theme-color" content="#1E2124">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" href="./icon-192.png">
+<title>Field Log</title>
+<style>
+:root{
+  --paper:#DBDDD7;
+  --panel:#F3F4F0;
+  --body:#1E2124;
+  --ink:#16181A;
+  --rule:#B7BAB3;
+  --mute:#6D716A;
+  --led:#FF3B2F;
+  --led-dim:#5E211C;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:16px;line-height:1.45;
+  padding-bottom:env(safe-area-inset-bottom);
+  -webkit-text-size-adjust:100%;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+
+/* engraved nameplate label */
+.plate{
+  font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--mute);font-weight:700;
+}
+
+/* ---- top bar ---- */
+header{
+  position:sticky;top:0;z-index:20;background:var(--body);color:var(--panel);
+  padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+  display:flex;align-items:center;gap:12px;
+  border-bottom:3px solid var(--ink);
+}
+header h1{
+  margin:0;font-size:15px;letter-spacing:.26em;text-transform:uppercase;font-weight:800;
+}
+header .back{
+  color:var(--panel);font-size:22px;line-height:1;padding:2px 8px 6px;margin-left:-8px;
+}
+header .spacer{flex:1}
+header .hbtn{
+  color:var(--panel);border:1px solid #4A4E51;border-radius:2px;
+  padding:6px 10px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+}
+main{padding:16px 16px 96px;max-width:720px;margin:0 auto}
+
+/* ---- nav ---- */
+nav{display:flex;gap:0;border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin-bottom:20px;background:var(--panel)}
+nav button{
+  flex:1;padding:11px 4px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  font-weight:700;color:var(--mute);border-right:1px solid var(--rule);
+}
+nav button:last-child{border-right:none}
+nav button[aria-current="true"]{background:var(--body);color:#fff}
+
+/* ---- filmstrip roll card ---- */
+.strip{
+  display:block;width:100%;text-align:left;background:var(--body);color:var(--panel);
+  border-radius:3px;overflow:hidden;margin-bottom:14px;
+}
+.perf{
+  height:11px;
+  background-image:repeating-linear-gradient(to right,var(--paper) 0 11px,transparent 11px 24px);
+  background-size:24px 6px;background-repeat:repeat-x;background-position:7px center;
+}
+.strip .inner{padding:12px 14px}
+.strip .stock{font-size:17px;font-weight:700;letter-spacing:.01em}
+.strip .meta{font-family:var(--mono);font-size:12px;color:#9EA39C;margin-top:3px}
+.strip .count{
+  font-family:var(--mono);font-size:12px;color:var(--led);margin-top:8px;letter-spacing:.06em;
+}
+
+/* ---- readout ---- */
+.readout{
+  background:var(--body);border-radius:3px;padding:16px 16px 18px;margin-bottom:18px;
+  border:1px solid var(--ink);
+}
+.readout .top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.frameno{
+  font-family:var(--mono);font-size:52px;font-weight:700;line-height:.9;
+  color:var(--led);text-shadow:0 0 14px rgba(255,59,47,.45);letter-spacing:-.02em;
+}
+.readout .exp{
+  font-family:var(--mono);font-size:19px;color:var(--led);text-align:right;
+  text-shadow:0 0 10px rgba(255,59,47,.35);
+}
+.readout .lensline{font-family:var(--mono);font-size:12px;color:#8E938C;margin-top:10px}
+.readout .plate{color:#7C817A}
+
+/* ---- stop pickers ---- */
+.field{margin-bottom:16px}
+.field > .plate{display:block;margin-bottom:7px}
+.stops{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.stops::-webkit-scrollbar{display:none}
+.stop{
+  flex:0 0 auto;padding:9px 12px;border:1px solid var(--rule);border-radius:2px;
+  background:var(--panel);font-family:var(--mono);font-size:14px;white-space:nowrap;
+}
+.stop[aria-pressed="true"]{background:var(--body);color:#fff;border-color:var(--ink)}
+
+input[type=text],input[type=number],textarea,select{
+  width:100%;padding:11px 12px;border:1px solid var(--rule);border-radius:2px;
+  background:var(--panel);font-size:16px;
+}
+textarea{resize:vertical;min-height:62px}
+select{-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--mute) 50%),linear-gradient(135deg,var(--mute) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+
+.btn{
+  display:block;width:100%;padding:15px;background:var(--body);color:#fff;border-radius:2px;
+  font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;
+}
+.btn:disabled{opacity:.35}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+.btn.danger{background:transparent;color:#8E2A20;border:1px solid #C3A19C}
+.btnrow{display:flex;gap:8px;margin-top:10px}
+.btnrow .btn{flex:1}
+
+/* ---- frame log rows (rebate style) ---- */
+.rebate{border-top:1px solid var(--rule);margin-top:24px}
+.frow{
+  display:flex;gap:12px;padding:12px 2px;border-bottom:1px solid var(--rule);
+  width:100%;text-align:left;align-items:flex-start;
+}
+.frow .n{
+  font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink);
+  min-width:34px;padding-top:1px;
+}
+.frow .body-col{flex:1;min-width:0}
+.frow .exp{font-family:var(--mono);font-size:14px}
+.frow .desc{font-size:14px;margin-top:2px;word-wrap:break-word}
+.frow .sub{font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:3px}
+
+.empty{
+  border:1px dashed var(--rule);border-radius:2px;padding:26px 18px;text-align:center;
+  color:var(--mute);font-size:14px;
+}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:2px;padding:14px;margin-bottom:14px}
+.sectionhead{display:flex;align-items:baseline;justify-content:space-between;margin:26px 0 10px}
+.chiprow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{
+  display:flex;align-items:center;gap:8px;border:1px solid var(--rule);border-radius:2px;
+  padding:6px 8px 6px 10px;background:var(--panel);font-size:14px;
+}
+.chip button{color:var(--mute);font-size:16px;line-height:1;padding:0 2px}
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:26px;z-index:60;
+  background:var(--ink);color:#fff;padding:11px 18px;border-radius:2px;
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+  opacity:0;pointer-events:none;transition:opacity .18s ease;
+}
+.toast.on{opacity:1}
+.hint{font-size:13px;color:var(--mute);margin-top:6px}
+
+/* ---- review ---- */
+.badge{
+  display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+  padding:2px 6px;border-radius:2px;margin-right:5px;vertical-align:1px;
+}
+.badge.keep{background:#3F5A33;color:#E2EBDB}
+.badge.miss{background:#7A2E26;color:#F6DDD9}
+.badge.ev{background:#33373A;color:#D2D5CE}
+.summary{
+  font-family:var(--mono);font-size:12px;color:var(--mute);
+  border-top:1px solid var(--rule);padding-top:10px;margin-top:2px;
+}
+.summary b{color:var(--ink);font-weight:700}
+.overlay{
+  position:fixed;inset:0;z-index:40;background:rgba(22,24,26,.7);
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.pane{
+  background:var(--paper);width:100%;max-height:92vh;overflow-y:auto;
+  border-top:3px solid var(--ink);
+  padding:16px 16px calc(20px + env(safe-area-inset-bottom));
+}
+@media (min-width:620px){
+  .overlay{align-items:center}
+  .pane{max-width:560px;border:3px solid var(--ink);border-radius:3px;max-height:86vh}
+}
+.paneTop{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding-bottom:12px;border-bottom:1px solid var(--rule);margin-bottom:16px;
+}
+.paneTop .fno{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1}
+.paneTop .shot{font-family:var(--mono);font-size:12px;color:var(--mute);text-align:right}
+.evrow{display:flex;gap:6px}
+.evrow .stop{flex:1;text-align:center;padding:11px 4px}
+.vrow{display:flex;gap:8px}
+.vrow .stop{flex:1;text-align:center;padding:13px 4px;font-family:var(--sans);font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.vrow .stop[aria-pressed="true"][data-v="keep"]{background:#3F5A33;border-color:#2E4326;color:#fff}
+.vrow .stop[aria-pressed="true"][data-v="miss"]{background:#7A2E26;border-color:#5C221C;color:#fff}
+.navrow{display:flex;gap:8px;margin-top:8px}
+.navrow .btn{flex:1}
+:focus-visible{outline:2px solid var(--led);outline-offset:2px}
+.hidden{display:none !important}
+
+#sheet{display:none}
+@media print{
+  body{background:#fff}
+  header,nav,main,.toast{display:none !important}
+  #sheet{display:block;padding:0;font-family:var(--sans);color:#000}
+  #sheet h2{margin:0 0 2px;font-size:17px;letter-spacing:.08em;text-transform:uppercase}
+  #sheet .sub{font-family:var(--mono);font-size:11px;margin-bottom:12px}
+  #sheet table{width:100%;border-collapse:collapse;font-size:11px}
+  #sheet th{text-align:left;font-size:9px;letter-spacing:.14em;text-transform:uppercase;border-bottom:1.5px solid #000;padding:4px 6px 4px 0}
+  #sheet td{border-bottom:.5px solid #999;padding:5px 6px 5px 0;vertical-align:top}
+  #sheet td.m{font-family:var(--mono)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="back hidden" id="backBtn" aria-label="Back">&#8592;</button>
+  <h1 id="title">Field Log</h1>
+  <div class="spacer"></div>
+  <button class="hbtn hidden" id="finishBtn">Finish roll</button>
+</header>
+
+<main>
+  <nav id="nav">
+    <button data-view="home" aria-current="true">Loaded</button>
+    <button data-view="archive">Archive</button>
+    <button data-view="gear">Gear</button>
+  </nav>
+  <div id="view"></div>
+</main>
+
+<div id="sheet"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ storage: Claude artifact API, else localStorage ============ */
+const KEY = 'filmlog:v1';
+const Store = {
+  async get(){
+    if (window.storage) {
+      try { const r = await window.storage.get(KEY, false); if (r && r.value) return r.value; } catch(e) {}
+    }
+    try { return localStorage.getItem(KEY); } catch(e) { return null; }
+  },
+  async set(v){
+    if (window.storage) {
+      try { await window.storage.set(KEY, v, false); return true; } catch(e) {}
+    }
+    try { localStorage.setItem(KEY, v); return true; } catch(e) { return false; }
+  }
+};
+
+/* ============ data ============ */
+const SHUTTERS = ['B','30s','15s','8s','4s','2s','1s','1/2','1/4','1/8','1/15','1/30','1/60','1/125','1/250','1/500','1/1000','1/2000'];
+const APERTURES = ['f/1.2','f/1.4','f/2','f/2.8','f/4','f/5.6','f/8','f/11','f/16','f/22','f/32'];
+
+let db = {
+  cameras: ['Minolta XG7','Kodak Duaflex II'],
+  lenses: ['50mm MD Rokkor-X f/2','Kodet (fixed)'],
+  stocks: ['Kodak Gold 200','Ektacolor Pro 400','Ilford Ilfocolor 400 Plus Vintage Tone'],
+  rolls: []
+};
+let state = { view:'home', rollId:null, draft:{}, edit:null };
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const roll = id => db.rolls.find(r => r.id === id);
+
+async function save(){ await Store.set(JSON.stringify(db)); }
+async function load(){
+  const raw = await Store.get();
+  if (raw) { try { const p = JSON.parse(raw); if (p && p.rolls) db = Object.assign(db, p); } catch(e) {} }
+}
+
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('on'), 1700);
+}
+
+function fmtTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+}
+function fmtDate(iso){
+  return new Date(iso).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+}
+
+/* ============ render ============ */
+const view = document.getElementById('view');
+
+function render(){
+  const backBtn = document.getElementById('backBtn');
+  const finishBtn = document.getElementById('finishBtn');
+  const nav = document.getElementById('nav');
+  const inRoll = state.view === 'roll';
+
+  backBtn.classList.toggle('hidden', !inRoll);
+  nav.classList.toggle('hidden', inRoll);
+  finishBtn.classList.toggle('hidden', !inRoll);
+
+  [...nav.children].forEach(b => b.setAttribute('aria-current', String(b.dataset.view === state.view)));
+
+  if (inRoll) {
+    const r = roll(state.rollId);
+    if (!r) { state.view='home'; return render(); }
+    document.getElementById('title').textContent = r.stock;
+    finishBtn.textContent = r.finished ? 'Reopen roll' : 'Finish roll';
+    renderRoll(r);
+  } else {
+    document.getElementById('title').textContent = 'Field Log';
+    if (state.view === 'home') renderHome();
+    else if (state.view === 'archive') renderArchive();
+    else { renderGear(); paintSW(); }
+  }
+  window.scrollTo(0,0);
+}
+
+function stripCard(r){
+  const cap = r.capacity ? ' of ' + r.capacity : '';
+  return `<button class="strip" data-open="${r.id}">
+    <div class="perf"></div>
+    <div class="inner">
+      <div class="stock">${esc(r.stock)}</div>
+      <div class="meta">${esc(r.camera)} &middot; ${esc(r.format)} &middot; ISO ${esc(r.iso)}</div>
+      <div class="count">${r.frames.length} frame${r.frames.length===1?'':'s'}${cap} &middot; loaded ${fmtDate(r.started)}</div>
+    </div>
+    <div class="perf"></div>
+  </button>`;
+}
+
+function renderHome(){
+  const active = db.rolls.filter(r => !r.finished);
+  view.innerHTML = `
+    ${active.length ? active.map(stripCard).join('')
+      : `<div class="empty">No rolls loaded.<br>Start one when you thread the leader.</div>`}
+    <div class="sectionhead"><span class="plate">Load a roll</span></div>
+    <div class="card">
+      <div class="field"><span class="plate">Film stock</span>
+        <input type="text" id="nStock" list="stockList" placeholder="Kodak Gold 200">
+        <datalist id="stockList">${db.stocks.map(s=>`<option value="${esc(s)}">`).join('')}</datalist>
+      </div>
+      <div class="field"><span class="plate">Camera</span>
+        <select id="nCam">${db.cameras.map(c=>`<option>${esc(c)}</option>`).join('')}</select>
+      </div>
+      <div class="field"><span class="plate">Format</span>
+        <select id="nFmt"><option>35mm</option><option>120</option><option>Other</option></select>
+      </div>
+      <div class="field"><span class="plate">Shot at ISO</span>
+        <input type="number" id="nIso" inputmode="numeric" placeholder="200">
+      </div>
+      <div class="field"><span class="plate">Exposures (optional)</span>
+        <input type="number" id="nCap" inputmode="numeric" placeholder="36">
+      </div>
+      <button class="btn" id="newRoll">Load roll</button>
+    </div>`;
+}
+
+function renderArchive(){
+  const done = db.rolls.filter(r => r.finished);
+  view.innerHTML = `
+    <div class="field"><input type="text" id="q" placeholder="Search stock, camera, lens, or notes"></div>
+    <div id="results">${done.length ? done.map(stripCard).join('') : `<div class="empty">Finished rolls land here.</div>`}</div>`;
+  const q = document.getElementById('q');
+  q.addEventListener('input', () => {
+    const term = q.value.trim().toLowerCase();
+    const res = document.getElementById('results');
+    if (!term) { res.innerHTML = done.length ? done.map(stripCard).join('') : `<div class="empty">Finished rolls land here.</div>`; return; }
+    const hits = db.rolls.filter(r =>
+      [r.stock,r.camera,r.format,r.notes].join(' ').toLowerCase().includes(term) ||
+      r.frames.some(f => [f.desc,f.lens,f.shutter,f.aperture].join(' ').toLowerCase().includes(term)));
+    res.innerHTML = hits.length ? hits.map(stripCard).join('') : `<div class="empty">Nothing matches &ldquo;${esc(term)}&rdquo;.</div>`;
+  });
+}
+
+function chipList(kind, items){
+  return `<div class="chiprow">${items.map((v,i)=>
+    `<span class="chip">${esc(v)}<button data-del="${kind}" data-i="${i}" aria-label="Remove ${esc(v)}">&times;</button></span>`).join('')}</div>`;
+}
+
+function renderGear(){
+  view.innerHTML = `
+    <div class="card">
+      <span class="plate">Cameras</span>${chipList('cameras', db.cameras)}
+      <div class="field" style="margin-top:12px"><input type="text" id="addCam" placeholder="Add a body"></div>
+      <button class="btn ghost" data-add="cameras" data-src="addCam">Add camera</button>
+    </div>
+    <div class="card">
+      <span class="plate">Lenses</span>${chipList('lenses', db.lenses)}
+      <div class="field" style="margin-top:12px"><input type="text" id="addLens" placeholder="Add a lens"></div>
+      <button class="btn ghost" data-add="lenses" data-src="addLens">Add lens</button>
+    </div>
+    <div class="card">
+      <span class="plate">Film stocks</span>${chipList('stocks', db.stocks)}
+      <div class="field" style="margin-top:12px"><input type="text" id="addStock" placeholder="Add a stock"></div>
+      <button class="btn ghost" data-add="stocks" data-src="addStock">Add stock</button>
+    </div>
+    <div class="card">
+      <span class="plate">Offline copy</span>
+      <p class="hint" id="swState">Checking&hellip;</p>
+    </div>
+    <div class="card">
+      <span class="plate">Backup</span>
+      <p class="hint">Every roll, frame, and piece of gear, as one file. Worth doing after a good day of shooting.</p>
+      <div class="btnrow">
+        <button class="btn ghost" id="backupFile">Save a file</button>
+        <button class="btn ghost" id="backup">Copy text</button>
+      </div>
+    </div>
+    <div class="card">
+      <span class="plate">Restore</span>
+      <p class="hint">Rolls already on this phone stay put. A roll that appears in both places is replaced by the backup&rsquo;s copy.</p>
+      <div class="field" style="margin-top:10px">
+        <input type="file" id="restoreFile" accept="application/json,.json,text/plain">
+      </div>
+      <div class="field">
+        <textarea id="restorePaste" placeholder="&hellip;or paste a backup here"></textarea>
+      </div>
+      <button class="btn ghost" id="restorePasteBtn">Restore from pasted text</button>
+    </div>`;
+}
+
+function renderRoll(r){
+  const d = state.draft;
+  if (d.rollId !== r.id) {
+    const last = r.frames[r.frames.length-1] || {};
+    state.draft = { rollId:r.id, shutter:last.shutter||'1/125', aperture:last.aperture||'f/8', lens:last.lens||db.lenses[0]||'', desc:'' };
+  }
+  const dr = state.draft;
+  const next = r.frames.length + 1;
+  const frames = [...r.frames].reverse();
+
+  view.innerHTML = `
+    <div class="readout">
+      <span class="plate">${r.finished ? 'Roll finished' : 'Next frame'}</span>
+      <div class="top">
+        <div class="frameno">${r.finished ? r.frames.length : String(next).padStart(2,'0')}</div>
+        <div class="exp">${esc(dr.shutter)} &nbsp; ${esc(dr.aperture)}</div>
+      </div>
+      <div class="lensline">${esc(r.camera)} &nbsp;|&nbsp; ${esc(dr.lens) || 'no lens set'}</div>
+    </div>
+
+    ${r.finished ? '' : `
+    <div class="field"><span class="plate">Shutter</span>
+      <div class="stops" id="shutterStops">
+        ${SHUTTERS.map(s=>`<button class="stop" data-set="shutter" data-v="${esc(s)}" aria-pressed="${s===dr.shutter}">${esc(s)}</button>`).join('')}
+        <button class="stop" data-custom="shutter">Other&hellip;</button>
+      </div>
+    </div>
+    <div class="field"><span class="plate">Aperture</span>
+      <div class="stops" id="apStops">
+        ${APERTURES.map(s=>`<button class="stop" data-set="aperture" data-v="${esc(s)}" aria-pressed="${s===dr.aperture}">${esc(s)}</button>`).join('')}
+        <button class="stop" data-custom="aperture">Other&hellip;</button>
+      </div>
+    </div>
+    <div class="field"><span class="plate">Lens</span>
+      <select id="lensSel">
+        ${db.lenses.map(l=>`<option ${l===dr.lens?'selected':''}>${esc(l)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><span class="plate">What you shot</span>
+      <textarea id="descIn" placeholder="Grain elevator off Main, backlit">${esc(dr.desc)}</textarea>
+    </div>
+    <button class="btn" id="logBtn">Log frame ${String(next).padStart(2,'0')}</button>
+    `}
+
+    <div class="sectionhead">
+      <span class="plate">${r.frames.length} logged</span>
+      <span class="plate">ISO ${esc(r.iso)} &middot; ${esc(r.format)}</span>
+    </div>
+    ${r.frames.length ? `<button class="btn ghost" id="reviewBtn">${reviewedCount(r) ? 'Continue review' : 'Review the scans'}</button>` : ''}
+    ${rollSummary(r)}
+    <div class="rebate">
+      ${frames.length ? frames.map(f=>`
+        <button class="frow" data-frame="${f.n}">
+          <span class="n">${String(f.n).padStart(2,'0')}</span>
+          <span class="body-col">
+            <span class="exp">${esc(f.shutter)} &nbsp; ${esc(f.aperture)}</span>
+            ${f.desc ? `<div class="desc">${esc(f.desc)}</div>` : ''}
+            ${badges(f)}
+            ${f.note ? `<div class="sub" style="color:var(--ink)">${esc(f.note)}</div>` : ''}
+            <div class="sub">${esc(f.lens)} &middot; ${fmtTime(f.ts)}</div>
+          </span>
+        </button>`).join('')
+      : `<div class="empty" style="margin-top:14px">Nothing logged yet.</div>`}
+    </div>
+
+    <div class="btnrow">
+      <button class="btn ghost" id="csvBtn">Export CSV</button>
+      <button class="btn ghost" id="printBtn">Print sheet</button>
+    </div>
+    <div class="btnrow">
+      <button class="btn danger" id="delRoll">Delete this roll</button>
+    </div>
+    ${state.edit ? editorHTML(r, state.edit) : ''}`;
+}
+
+const EV = [
+  {v:-2, l:'\u22122'}, {v:-1, l:'\u22121'}, {v:0, l:'Good'}, {v:1, l:'+1'}, {v:2, l:'+2'}
+];
+
+function badges(f){
+  if (f.verdict == null && f.ev == null) return '';
+  let out = '';
+  if (f.verdict === 'keep') out += `<span class="badge keep">Keeper</span>`;
+  if (f.verdict === 'miss') out += `<span class="badge miss">Miss</span>`;
+  if (f.ev != null) out += `<span class="badge ev">${f.ev === 0 ? 'Exposure good' : (f.ev > 0 ? '+'+f.ev : f.ev) + ' stop' + (Math.abs(f.ev)===1?'':'s')}</span>`;
+  return `<div style="margin-top:5px">${out}</div>`;
+}
+
+function reviewedCount(r){
+  return r.frames.filter(f => f.verdict != null || f.ev != null || (f.note && f.note.trim())).length;
+}
+
+function rollSummary(r){
+  const done = reviewedCount(r);
+  if (!done) return '';
+  const keep = r.frames.filter(f => f.verdict === 'keep').length;
+  const miss = r.frames.filter(f => f.verdict === 'miss').length;
+  const evs = r.frames.filter(f => typeof f.ev === 'number').map(f => f.ev);
+  let bias = '';
+  if (evs.length >= 3) {
+    const avg = evs.reduce((a,b)=>a+b,0) / evs.length;
+    const r1 = Math.round(avg*10)/10;
+    bias = Math.abs(r1) < 0.3
+      ? ' &middot; exposure sat about right across the roll'
+      : ` &middot; ran <b>${r1 > 0 ? '+'+r1 : r1} stop${Math.abs(r1)===1?'':'s'}</b> on average, so it leaned ${r1 > 0 ? 'over' : 'under'}`;
+  }
+  return `<div class="summary"><b>${keep}</b> keeper${keep===1?'':'s'}, <b>${miss}</b> miss${miss===1?'':'es'} of ${done} reviewed${bias}</div>`;
+}
+
+function editorHTML(r, n){
+  const f = r.frames.find(x => x.n === n);
+  if (!f) return '';
+  const i = r.frames.indexOf(f);
+  return `<div class="overlay" id="overlay"><div class="pane">
+    <div class="paneTop">
+      <div>
+        <span class="plate">Frame ${String(f.n).padStart(2,'0')} of ${r.frames.length}</span>
+        <div class="fno">${esc(f.shutter)} &nbsp; ${esc(f.aperture)}</div>
+      </div>
+      <div class="shot">${esc(f.lens)}<br>${fmtTime(f.ts)}</div>
+    </div>
+
+    <div class="field"><span class="plate">What you shot</span>
+      <textarea id="edDesc">${esc(f.desc)}</textarea>
+    </div>
+
+    <div class="field"><span class="plate">How the exposure came out</span>
+      <div class="evrow">
+        ${EV.map(o=>`<button class="stop" data-ev="${o.v}" aria-pressed="${f.ev===o.v}">${o.l}</button>`).join('')}
+      </div>
+      <p class="hint">Stops off, judging the scan. Tap again to clear.</p>
+    </div>
+
+    <div class="field"><span class="plate">Verdict</span>
+      <div class="vrow">
+        <button class="stop" data-verdict="keep" data-v="keep" aria-pressed="${f.verdict==='keep'}">Keeper</button>
+        <button class="stop" data-verdict="miss" data-v="miss" aria-pressed="${f.verdict==='miss'}">Miss</button>
+      </div>
+    </div>
+
+    <div class="field"><span class="plate">Notes on the result</span>
+      <textarea id="edNote" placeholder="Soft \u2014 probably me, not the lens">${esc(f.note||'')}</textarea>
+    </div>
+
+    <div class="navrow">
+      <button class="btn ghost" data-step="-1" ${i===0?'disabled':''}>&larr; Frame ${String(Math.max(1,f.n-1)).padStart(2,'0')}</button>
+      <button class="btn ghost" data-step="1" ${i===r.frames.length-1?'disabled':''}>Frame ${String(Math.min(r.frames.length,f.n+1)).padStart(2,'0')} &rarr;</button>
+    </div>
+    <div class="navrow"><button class="btn" id="edDone">Done</button></div>
+    <div class="navrow"><button class="btn danger" id="edDelete">Delete frame ${String(f.n).padStart(2,'0')}</button></div>
+  </div></div>`;
+}
+
+/* ============ events ============ */
+document.getElementById('nav').addEventListener('click', e => {
+  const b = e.target.closest('button[data-view]'); if (!b) return;
+  state.edit = null; state.view = b.dataset.view; render();
+});
+document.getElementById('backBtn').addEventListener('click', async () => {
+  const r = roll(state.rollId);
+  if (state.edit && r) await commitEditorText(r);
+  state.edit = null; state.view='home'; render();
+});
+document.getElementById('finishBtn').addEventListener('click', async () => {
+  const r = roll(state.rollId); if (!r) return;
+  r.finished = !r.finished;
+  r.finishedAt = r.finished ? new Date().toISOString() : null;
+  await save();
+  toast(r.finished ? 'Roll finished' : 'Roll reopened');
+  if (r.finished) { state.view = 'archive'; }
+  render();
+});
+
+view.addEventListener('click', async e => {
+  const t = e.target;
+
+  const open = t.closest('[data-open]');
+  if (open) { state.edit = null; state.rollId = open.dataset.open; state.view='roll'; render(); return; }
+
+  if (t.id === 'newRoll') {
+    const stock = document.getElementById('nStock').value.trim();
+    if (!stock) { toast('Name the film stock'); return; }
+    const r = {
+      id: uid(), stock,
+      camera: document.getElementById('nCam').value,
+      format: document.getElementById('nFmt').value,
+      iso: document.getElementById('nIso').value.trim() || '—',
+      capacity: document.getElementById('nCap').value.trim() || '',
+      started: new Date().toISOString(), finished:false, notes:'', frames:[]
+    };
+    if (!db.stocks.includes(stock)) db.stocks.push(stock);
+    db.rolls.unshift(r);
+    await save();
+    state.edit = null; state.rollId = r.id; state.view='roll'; render();
+    return;
+  }
+
+  const set = t.closest('[data-set]');
+  if (set) {
+    state.draft[set.dataset.set] = set.dataset.v;
+    const r = roll(state.rollId); renderRoll(r);
+    return;
+  }
+  const custom = t.closest('[data-custom]');
+  if (custom) {
+    const k = custom.dataset.custom;
+    const v = prompt(k === 'shutter' ? 'Shutter speed (e.g. 1/45)' : 'Aperture (e.g. f/3.5)');
+    if (v && v.trim()) { state.draft[k] = v.trim(); renderRoll(roll(state.rollId)); }
+    return;
+  }
+
+  if (t.id === 'logBtn') {
+    const r = roll(state.rollId);
+    state.draft.lens = document.getElementById('lensSel').value;
+    state.draft.desc = document.getElementById('descIn').value.trim();
+    r.frames.push({
+      n: r.frames.length + 1,
+      shutter: state.draft.shutter, aperture: state.draft.aperture,
+      lens: state.draft.lens, desc: state.draft.desc,
+      ts: new Date().toISOString()
+    });
+    state.draft.desc = '';
+    await save();
+    toast('Frame ' + r.frames.length + ' logged');
+    renderRoll(r);
+    return;
+  }
+
+  const fr = t.closest('[data-frame]');
+  if (fr) { openEditor(roll(state.rollId), Number(fr.dataset.frame)); return; }
+
+  if (t.id === 'reviewBtn') {
+    const r = roll(state.rollId);
+    const next = r.frames.find(f => f.verdict == null && f.ev == null) || r.frames[0];
+    openEditor(r, next.n);
+    return;
+  }
+
+  const ev = t.closest('[data-ev]');
+  if (ev) {
+    const r = roll(state.rollId);
+    const f = r.frames.find(x => x.n === state.edit);
+    const v = Number(ev.dataset.ev);
+    f.ev = (f.ev === v) ? null : v;
+    await commitEditorText(r);
+    renderRoll(r);
+    return;
+  }
+
+  const vd = t.closest('[data-verdict]');
+  if (vd) {
+    const r = roll(state.rollId);
+    const f = r.frames.find(x => x.n === state.edit);
+    const v = vd.dataset.verdict;
+    f.verdict = (f.verdict === v) ? null : v;
+    await commitEditorText(r);
+    renderRoll(r);
+    return;
+  }
+
+  const step = t.closest('[data-step]');
+  if (step) {
+    const r = roll(state.rollId);
+    const target = state.edit + Number(step.dataset.step);
+    if (r.frames.some(f => f.n === target)) openEditor(r, target);
+    return;
+  }
+
+  if (t.id === 'edDone') { closeEditor(roll(state.rollId)); return; }
+
+  if (t.id === 'edDelete') {
+    const r = roll(state.rollId);
+    const n = state.edit;
+    if (!confirm('Delete frame ' + n + '? The frames after it shift up by one.')) return;
+    r.frames = r.frames.filter(x => x.n !== n);
+    r.frames.forEach((x,i) => x.n = i+1);
+    state.edit = null;
+    await save(); toast('Frame removed'); renderRoll(r);
+    return;
+  }
+
+  if (t.id === 'overlay') { closeEditor(roll(state.rollId)); return; }
+
+  if (t.id === 'csvBtn') { exportCSV(roll(state.rollId)); return; }
+  if (t.id === 'printBtn') { printSheet(roll(state.rollId)); return; }
+
+  if (t.id === 'delRoll') {
+    const r = roll(state.rollId);
+    if (!confirm('Delete this roll and its ' + r.frames.length + ' frames? This cannot be undone.')) return;
+    db.rolls = db.rolls.filter(x => x.id !== r.id);
+    await save(); state.view='home'; render();
+    return;
+  }
+
+  const add = t.closest('[data-add]');
+  if (add) {
+    const inp = document.getElementById(add.dataset.src);
+    const v = inp.value.trim();
+    if (!v) { toast('Type a name first'); return; }
+    db[add.dataset.add].push(v); await save(); renderGear();
+    return;
+  }
+  const del = t.closest('[data-del]');
+  if (del) { db[del.dataset.del].splice(Number(del.dataset.i),1); await save(); renderGear(); return; }
+
+  if (t.id === 'backup') {
+    copyText(JSON.stringify(db,null,2), 'Backup copied');
+    return;
+  }
+  if (t.id === 'backupFile') {
+    downloadFile(JSON.stringify(db,null,2),
+      'field-log-backup-' + new Date().toISOString().slice(0,10) + '.json',
+      'application/json', 'Backup saved');
+    return;
+  }
+  if (t.id === 'restorePasteBtn') {
+    const box = document.getElementById('restorePaste');
+    const text = box.value.trim();
+    if (!text) { toast('Paste a backup first'); return; }
+    if (await restore(text)) box.value = '';
+    return;
+  }
+});
+
+view.addEventListener('change', e => {
+  if (e.target.id === 'lensSel') { state.draft.lens = e.target.value; renderRoll(roll(state.rollId)); }
+  if (e.target.id === 'restoreFile') {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const fr = new FileReader();
+    fr.onload = () => restore(fr.result);
+    fr.onerror = () => toast('Could not read that file');
+    fr.readAsText(file);
+    e.target.value = '';
+  }
+});
+view.addEventListener('input', e => {
+  if (e.target.id === 'descIn') state.draft.desc = e.target.value;
+});
+
+async function commitEditorText(r){
+  if (!state.edit) return;
+  const f = r.frames.find(x => x.n === state.edit);
+  if (!f) return;
+  const d = document.getElementById('edDesc');
+  const nn = document.getElementById('edNote');
+  if (d) f.desc = d.value.trim();
+  if (nn) f.note = nn.value.trim();
+  await save();
+}
+
+async function openEditor(r, n){
+  if (state.edit) await commitEditorText(r);
+  state.edit = n;
+  renderRoll(r);
+}
+
+async function closeEditor(r){
+  await commitEditorText(r);
+  state.edit = null;
+  renderRoll(r);
+}
+
+/* ============ restore ============ */
+async function restore(text){
+  let incoming;
+  try { incoming = JSON.parse(text); }
+  catch(e) { alert('That is not a readable backup. It should start with { and end with }.'); return false; }
+
+  if (!incoming || !Array.isArray(incoming.rolls)) {
+    alert('That file has no rolls in it. Use a backup saved from this app.');
+    return false;
+  }
+
+  const valid = incoming.rolls.filter(r => r && r.id && r.stock && Array.isArray(r.frames));
+  if (!valid.length) { alert('No usable rolls found in that backup.'); return false; }
+
+  const ids = new Set(db.rolls.map(r => r.id));
+  const overlap = valid.filter(r => ids.has(r.id)).length;
+  const fresh = valid.length - overlap;
+  const frames = valid.reduce((n,r) => n + r.frames.length, 0);
+
+  const msg = 'This backup holds ' + valid.length + ' roll' + (valid.length===1?'':'s') +
+    ' and ' + frames + ' frame' + (frames===1?'':'s') + '.\n\n' +
+    fresh + ' will be added.\n' +
+    overlap + ' already here will be overwritten by the backup.\n\n' +
+    'Restore now?';
+  if (!confirm(msg)) return false;
+
+  ['cameras','lenses','stocks'].forEach(k => {
+    (Array.isArray(incoming[k]) ? incoming[k] : []).forEach(v => {
+      if (typeof v === 'string' && v && !db[k].includes(v)) db[k].push(v);
+    });
+  });
+
+  valid.forEach(r => {
+    r.frames = r.frames.filter(f => f && f.n != null);
+    r.frames.forEach((f,i) => { f.n = i + 1; if (!f.ts) f.ts = r.started || new Date().toISOString(); });
+    const i = db.rolls.findIndex(x => x.id === r.id);
+    if (i >= 0) db.rolls[i] = r; else db.rolls.unshift(r);
+  });
+
+  await save();
+  toast('Restored ' + valid.length + ' roll' + (valid.length===1?'':'s'));
+  renderGear(); paintSW();
+  return true;
+}
+
+function downloadFile(text, name, type, msg){
+  try {
+    const blob = new Blob([text], {type});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    toast(msg);
+  } catch(e) {
+    copyText(text, 'Copied instead');
+  }
+}
+
+/* ============ export ============ */
+function csvCell(v){ return '"' + String(v==null?'':v).replace(/"/g,'""') + '"'; }
+function buildCSV(r){
+  const head = ['Frame','Shutter','Aperture','Camera','Lens','Description','Exposure (stops off)','Verdict','Result notes','Logged','Film stock','ISO','Format'];
+  const rows = r.frames.map(f => [f.n,f.shutter,f.aperture,r.camera,f.lens,f.desc,
+    (f.ev==null?'':f.ev), (f.verdict==='keep'?'Keeper':f.verdict==='miss'?'Miss':''), (f.note||''),
+    f.ts,r.stock,r.iso,r.format]);
+  return [head, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
+}
+function copyText(text, msg){
+  const done = () => toast(msg);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+  } else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done){
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch(e) { toast('Copy failed'); }
+  document.body.removeChild(ta);
+}
+function exportCSV(r){
+  const csv = buildCSV(r);
+  const name = (r.stock + '-' + fmtDate(r.started)).replace(/[^\w-]+/g,'_') + '.csv';
+  downloadFile(csv, name, 'text/csv', 'CSV saved');
+}
+function printSheet(r){
+  document.getElementById('sheet').innerHTML = `
+    <h2>${esc(r.stock)}</h2>
+    <div class="sub">${esc(r.camera)} &middot; ${esc(r.format)} &middot; ISO ${esc(r.iso)} &middot; loaded ${fmtDate(r.started)} &middot; ${r.frames.length} frames</div>
+    <table><thead><tr>
+      <th>#</th><th>Shutter</th><th>Aperture</th><th>Lens</th><th>Description</th><th>Exp.</th><th>Verdict</th><th>Result notes</th>
+    </tr></thead><tbody>
+    ${r.frames.map(f=>`<tr>
+      <td class="m">${f.n}</td><td class="m">${esc(f.shutter)}</td><td class="m">${esc(f.aperture)}</td>
+      <td>${esc(f.lens)}</td><td>${esc(f.desc)}</td>
+      <td class="m">${f.ev==null?'':(f.ev>0?'+'+f.ev:f.ev)}</td>
+      <td>${f.verdict==='keep'?'Keeper':f.verdict==='miss'?'Miss':''}</td>
+      <td>${esc(f.note||'')}</td>
+    </tr>`).join('')}
+    </tbody></table>`;
+  window.print();
+}
+
+/* ============ offline ============ */
+let swStatus = 'Not available here. Open the app from its web address and it will cache itself.';
+function paintSW(){
+  const el = document.getElementById('swState');
+  if (el) el.textContent = swStatus;
+}
+function setSW(msg){ swStatus = msg; paintSW(); }
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        setSW(navigator.serviceWorker.controller
+          ? 'Stored on this phone. The app opens with no signal.'
+          : 'Saved. Close and reopen once to finish.');
+        reg.addEventListener('updatefound', () => setSW('Updating to a newer version\u2026'));
+      })
+      .catch(() => setSW('Could not be stored offline. The app still works while you have a connection.'));
+  });
+}
+
+/* ============ boot ============ */
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().catch(() => {});
+}
+load().then(() => { render(); paintSW(); });
+</script>
+</body>
+</html>
